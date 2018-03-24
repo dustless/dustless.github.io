@@ -37,15 +37,15 @@ tags:
 #### 神经网络量化的实现
 1. 神经网络对量化的实现需要把常见操作（卷积，矩阵乘法，激活函数，池化，拼接等）转换为等价的8位整数版本的操作，然后在操作的前后分别加上quantize和dequantize操作，quantize操作将input从浮点数转换成8 位整数，dequantize操作把output从8 位整数转回浮点数。以Relu为例：
 
-![image](http://dustless.github.io/pictures/2018-03-24-quantization0.png)
+    ![image](http://dustless.github.io/pictures/2018-03-24-quantization0.png)
 
-经过转换后，新的子图如下：
+    经过转换后，新的子图如下：
 
-![image](http://dustless.github.io/pictures/2018-03-24-quantization1.png)
+    ![image](http://dustless.github.io/pictures/2018-03-24-quantization1.png)
 
 2. 连续的dequantize和quantize操作可以互相抵消，如图所示：
 
-![image](http://dustless.github.io/pictures/2018-03-24-quantization2.png)
+    ![image](http://dustless.github.io/pictures/2018-03-24-quantization2.png)
 
 #### 量化操作的实现
 量化操作需要将一组float输入转换成uint8（0~255），最直观的想法就是先求出这组输入的最小值min和最大值max，然后对每个输入数据可以用
@@ -65,15 +65,17 @@ x = q * (max - min) / 255 + min
 关于量化操作，tensorflow和nnlib的策略不太一样。
 
 1. tensorflow：
-分有符号输入和无符号输入两种情况。
 
-* 有符号输入：调整min和max，max=MAX(-min, max), min = -max, 这样可以使得范围是对称的，[min, max]被量化至[-127, 127]
-* 无符号输入：令min=0，然后将[0, max]量化至[0, 255]
+    分有符号输入和无符号输入两种情况。
 
-以上两种情况下，都能保证输入的0.0值能刚好被量化成0.
+    * 有符号输入：调整min和max，max=MAX(-min, max), min = -max, 这样可以使得范围是对称的，[min, max]被量化至[-127, 127]
+    * 无符号输入：令min=0，然后将[0, max]量化至[0, 255]
+
+    以上两种情况下，都能保证输入的0.0值能刚好被量化成0.
 
 2. nnlib：
-不区分是否为有符号，统一量化到0~255。下面这部分源码是为了调整min和max的值，使得0.0被量化后的误差小于2^-14.
+
+    不区分是否为有符号，统一量化到0~255。下面这部分源码是为了调整min和max的值，使得0.0被量化后的误差小于2^-14.
 
 ```c
 static inline void quantize_adjust_range(float *out_min, float *out_max, float *out_stepsize, float *out_recip_stepsize, float in_min, float in_max)
