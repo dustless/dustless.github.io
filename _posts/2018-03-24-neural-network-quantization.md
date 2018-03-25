@@ -77,46 +77,59 @@ x = q * (max - min) / 255 + min
 
     不区分是否为有符号，统一量化到0~255。下面这部分源码是为了调整min和max的值，使得0.0被量化后的误差小于2^-14.
 
-```c
+```cpp
 static inline void quantize_adjust_range(float *out_min, float *out_max, float *out_stepsize, float *out_recip_stepsize, float in_min, float in_max)
 {
     // 确保0被包含在[min, max]
-	float minval = fminf(0.0f,in_min);
-	float maxval = fmaxf(0.0f,in_max);
-	float range = fmaxf(0.0001f,maxval-minval);
-	float recip_stepsize = 255.0f/range;
+    
+    float minval = fminf(0.0f,in_min);
+    float maxval = fmaxf(0.0f,in_max);
+    float range = fmaxf(0.0001f,maxval-minval);
+    float recip_stepsize = 255.0f/range;
 
-	// move either min, or max, as  little as possible, so that
-	// the 'zero' point  -min *255/range  is an integer. if minval == 0
-	// this is already true.
-	if( minval < 0.0f ){
-		float z = - minval *recip_stepsize;		// current 'zero point'
-		float zi = floorf(z);					// integer part, >=0
-		float zf = z - zi;
-		// if within 2^-14 of an integer, call it close enough
-		if( zf > 6.1035156e-05f && zf < 0.999938965f){
-			// choose which end to move
-			// if zi <= 0  or >= 254, the decision is based on that only (to
-			// avoid divide by 0) otherwise choose based on which can be moved
-			// the least.
-			//
-			if( zi > 0.0f && ( zi > 253.0f || (zf-1.0f)*minval>= zf*maxval )) {
-				// increase max, change z to zi
-				range = -255.0f*minval/zi;
-				maxval = minval+ range;
-			}else{
-				// decrease min; change z to zi+1
-				minval = maxval*(zi+1.0f)/(zi-254.0f);
-				range = maxval-minval;
-			}
-			// recalc range
-			recip_stepsize = 255.0f/range;
-		}
-	}
-	*out_min = minval;
-	*out_max = maxval;
-	*out_stepsize = flt_div_255(range);
-	*out_recip_stepsize = recip_stepsize;
+    // move either min, or max, as  little as possible, 
+    
+    // so that the 'zero' point  -min *255/range  is an integer. 
+    
+    // if minval == 0 this is already true.
+    
+    if( minval < 0.0f ){
+        float z = - minval *recip_stepsize;  // current 'zero point'
+        
+        float zi = floorf(z);  // integer part, >=0
+        
+        float zf = z - zi;
+        // if within 2^-14 of an integer, call it close enough
+        
+        if( zf > 6.1035156e-05f && zf < 0.999938965f){
+            // choose which end to move
+            
+            // if zi <= 0  or >= 254, the decision is based on that only (to
+            
+            // avoid divide by 0) otherwise choose based on which can be moved
+            
+            // the least.
+            
+            if( zi > 0.0f && ( zi > 253.0f || (zf-1.0f)*minval>= zf*maxval )) {
+                // increase max, change z to zi
+                
+                range = -255.0f*minval/zi;
+                maxval = minval+ range;
+            }else{
+                // decrease min; change z to zi+1
+                
+                minval = maxval*(zi+1.0f)/(zi-254.0f);
+                range = maxval-minval;
+            }
+            // recalc range
+            
+            recip_stepsize = 255.0f/range;
+        }
+    }
+    *out_min = minval;
+    *out_max = maxval;
+    *out_stepsize = flt_div_255(range);
+    *out_recip_stepsize = recip_stepsize;
 }
 ```
 
